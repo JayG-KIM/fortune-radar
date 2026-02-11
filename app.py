@@ -53,18 +53,38 @@ st.markdown("""
         font-size: 16px;
         color: #FFFFFF;
         font-weight: 500;
-        word-break: keep-all; /* 텍스트 줄바꿈 예쁘게 */
+        word-break: keep-all;
     }
-    .main-title { font-size: 40px; font-weight: bold; color: #FFFFFF; }
-    .sub-title { font-size: 18px; color: #CCCCCC; margin-bottom: 20px; }
+    /* 타이틀 영역 스타일 (모바일 최적화 + 포인트 컬러) */
+    .title-container {
+        text-align: left;
+        margin-bottom: 20px;
+    }
+    .main-title { 
+        font-size: 32px; 
+        font-weight: bold; 
+        color: #FFFFFF; 
+        margin-bottom: 5px;
+        line-height: 1.2;
+    }
+    .sub-title { 
+        font-size: 16px; 
+        color: #CCCCCC; 
+        margin-bottom: 10px; 
+        line-height: 1.5;
+    }
+    .highlight {
+        color: #00D4FF;
+        font-weight: bold;
+    }
     .engine-tag { 
-        font-size: 12px; 
+        display: inline-block;
+        font-size: 11px; 
         color: #00D4FF; 
         border: 1px solid #00D4FF; 
-        padding: 4px 8px; 
+        padding: 4px 10px; 
         border-radius: 15px; 
-        margin-left: 10px;
-        vertical-align: middle;
+        background-color: rgba(0, 212, 255, 0.05);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -84,7 +104,7 @@ SYSTEM_PROMPT = """
 try:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(
-        model_name='gemini-2.5-flash-lite',
+        model_name='gemini-1.5-flash',
         system_instruction=SYSTEM_PROMPT
     )
 except Exception as e:
@@ -161,14 +181,14 @@ def display_card(column, icon, title, value):
         </div>
         """, unsafe_allow_html=True)
 
-# --- 4. 메인 UI ---
+# --- 4. 메인 UI (카피라이팅 수정 & 포인트 컬러 적용) ---
 st.markdown("""
-    <div>
-        <span class="main-title">오늘의 눈치 레이더</span>
-        <span class="engine-tag">Powered by AI Work Strategy Engine</span>
+    <div class="title-container">
+        <div class="main-title">오늘의 눈치 레이더</div>
+        <div class="sub-title">데이터로 분석한 <span class="highlight">오늘의 직장 생존 전략</span></div>
+        <div class="engine-tag">Powered by AI Work Strategy Engine</div>
     </div>
-    <div class="sub-title">보이지 않는 직장 신호를 전략으로 해석합니다.</div>
-    <hr style="border-top: 1px solid #333; margin-top: 0;">
+    <hr style="border-top: 1px solid #333; margin-top: 10px;">
 """, unsafe_allow_html=True)
 
 c_input1, c_input2, c_input3 = st.columns([2, 1, 1])
@@ -197,7 +217,7 @@ display_card(c4, weather_icon, "마곡 날씨", weather_text)
 st.write("")
 st.markdown("---")
 
-# --- 5. 전략 분석 로직 (Fix: 카드 매칭 이슈 해결) ---
+# --- 5. 전략 분석 로직 ---
 if st.button("🚀 전략 분석 시작", type="primary", use_container_width=True):
     
     loading_texts = [
@@ -209,7 +229,6 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
     
     with st.spinner(random.choice(loading_texts)):
         
-        # [프롬프트 강화] 첫 줄에 요약문을 강제함
         strategy_prompt = f"""
         Analyze today's workplace strategy for the user.
         
@@ -247,12 +266,10 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
             response = model.generate_content(strategy_prompt)
             full_text = response.text.strip()
             
-            # [파싱 로직 개선] 첫 줄이 아니더라도 '|'가 포함된 줄을 찾아서 요약으로 사용
             lines = full_text.split('\n')
             summary_line = None
             detail_lines = []
             
-            # 요약줄 찾기 (파이프가 있고 4개 항목 정도 되는지 확인)
             found_summary = False
             for i, line in enumerate(lines):
                 if "|" in line and not found_summary:
@@ -261,21 +278,17 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
                 else:
                     detail_lines.append(line)
             
-            # 상세 내용은 요약줄을 뺀 나머지
             detail_text = "\n".join(detail_lines).strip()
 
-            # 요약줄 파싱
             if summary_line:
                 parts = summary_line.split('|')
             else:
-                parts = ["분석 완료", "전략 수립", "기회 포착", "행운 가득"] # Fallback
+                parts = ["분석 완료", "전략 수립", "기회 포착", "행운 가득"]
 
-            # 4개 미만일 경우 채워넣기 (에러 방지)
             while len(parts) < 4: parts.append("-")
 
             st.success("✅ 전략 브리핑이 생성되었습니다.")
             
-            # 결과 카드 (AI가 생성한 요약이 여기에 꽂힙니다!)
             r1, r2, r3, r4 = st.columns(4)
             display_card(r1, "⚡", "오늘의 총운", parts[0].strip())
             display_card(r2, "🤝", "상사/동료", parts[1].strip())
@@ -284,9 +297,7 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
             
             st.markdown("---")
             
-            # 상세 내용 출력
             st.markdown(detail_text)
             
         except Exception as e:
-
             st.error(f"분석 실패: {e}")
