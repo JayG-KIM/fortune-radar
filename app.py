@@ -173,7 +173,7 @@ st.markdown("""
 
 c_input1, c_input2, c_input3 = st.columns([2, 1, 1])
 with c_input1:
-    birth_date = st.date_input("📅 생년월일", value=datetime.date(1992, 2, 29), min_value=datetime.date(1950, 1, 1))
+    birth_date = st.date_input("📅 생년월일", value=datetime.date(2024, 3, 5), min_value=datetime.date(1920, 1, 1))
 with c_input2:
     gender = st.radio("성별", ["남성", "여성"], horizontal=True)
 with c_input3:
@@ -288,4 +288,5 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
             st.markdown(detail_text)
             
         except Exception as e:
+
             st.error(f"분석 실패: {e}")
