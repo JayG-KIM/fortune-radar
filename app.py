@@ -5,6 +5,7 @@ import requests
 import json
 import random
 import os
+import time
 from dotenv import load_dotenv
 from korean_lunar_calendar import KoreanLunarCalendar
 
@@ -17,6 +18,9 @@ if not os.getenv("GEMINI_API_KEY"):
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+
+# 디버그 모드 확인 (환경변수가 'True'일 때만 작동)
+DEBUG_MODE = os.getenv("DEBUG_MODE", "False") == "True"
 
 st.set_page_config(
     page_title="오늘의 눈치 레이더",
@@ -55,7 +59,6 @@ st.markdown("""
         font-weight: 500;
         word-break: keep-all;
     }
-    /* 타이틀 영역 스타일 (모바일 최적화 + 포인트 컬러) */
     .title-container {
         text-align: left;
         margin-bottom: 20px;
@@ -86,6 +89,16 @@ st.markdown("""
         border-radius: 15px; 
         background-color: rgba(0, 212, 255, 0.05);
     }
+    /* 선착순 마감 에러 메시지 스타일 */
+    .quota-error {
+        background-color: #2b1c1c;
+        border: 1px solid #ff4b4b;
+        color: #ffcccc;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        font-size: 15px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -103,8 +116,9 @@ SYSTEM_PROMPT = """
 
 try:
     genai.configure(api_key=GEMINI_API_KEY)
+    # [수정 완료] PO님이 요청하신 2.5 Flash 모델로 변경
     model = genai.GenerativeModel(
-        model_name='gemini-1.5-flash',
+        model_name='gemini-2.5-flash',
         system_instruction=SYSTEM_PROMPT
     )
 except Exception as e:
@@ -160,12 +174,23 @@ def get_lunar_date(date_obj):
     return calendar.LunarIsoFormat()
 
 def get_zodiac_sign(day, month):
-    zodiac_dates = [(1, 20), (2, 19), (3, 21), (4, 20), (5, 21), (6, 21), (7, 23), (8, 23), (9, 23), (10, 23), (11, 22), (12, 22)]
-    zodiac_signs = ["염소자리", "물병자리", "물고기자리", "양자리", "황소자리", "쌍둥이자리", "게자리", "사자자리", "처녀자리", "천칭자리", "전갈자리", "사수자리", "염소자리"]
-    if day < zodiac_dates[month-1][0]:
-        return zodiac_signs[month-1]
-    else:
-        return zodiac_signs[month]
+    """
+    황도 12궁 날짜 기준 (Fix 완료)
+    """
+    md = month * 100 + day
+    
+    if 120 <= md <= 218: return "물병자리"
+    elif 219 <= md <= 320: return "물고기자리"
+    elif 321 <= md <= 419: return "양자리"
+    elif 420 <= md <= 520: return "황소자리"
+    elif 521 <= md <= 621: return "쌍둥이자리"
+    elif 622 <= md <= 722: return "게자리"
+    elif 723 <= md <= 822: return "사자자리"
+    elif 823 <= md <= 922: return "처녀자리"
+    elif 923 <= md <= 1022: return "천칭자리"
+    elif 1023 <= md <= 1122: return "전갈자리"
+    elif 1123 <= md <= 1224: return "사수자리"
+    else: return "염소자리"
 
 def get_korean_zodiac(year):
     animals = ["원숭이", "닭", "개", "돼지", "쥐", "소", "호랑이", "토끼", "용", "뱀", "말", "양"]
@@ -181,7 +206,7 @@ def display_card(column, icon, title, value):
         </div>
         """, unsafe_allow_html=True)
 
-# --- 4. 메인 UI (카피라이팅 수정 & 포인트 컬러 적용) ---
+# --- 4. 메인 UI ---
 st.markdown("""
     <div class="title-container">
         <div class="main-title">오늘의 눈치 레이더</div>
@@ -191,8 +216,12 @@ st.markdown("""
     <hr style="border-top: 1px solid #333; margin-top: 10px;">
 """, unsafe_allow_html=True)
 
+if DEBUG_MODE:
+    st.caption("🛠️ 현재 [개발자 테스트 모드]가 켜져 있습니다. API가 차감되지 않습니다.")
+
 c_input1, c_input2, c_input3 = st.columns([2, 1, 1])
 with c_input1:
+    # [수정 완료] 디폴트 2024-03-05, 최소 1920-01-01
     birth_date = st.date_input("📅 생년월일", value=datetime.date(2024, 3, 5), min_value=datetime.date(1920, 1, 1))
 with c_input2:
     gender = st.radio("성별", ["남성", "여성"], horizontal=True)
@@ -239,32 +268,32 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
         
         [Output Request]
         Generate a strategic briefing in Korean.
-        
-        IMPORTANT: The very first line of your response MUST be the 4 summary keywords separated by '|'. Do not add any intro text.
+        IMPORTANT: The very first line MUST be the 4 summary keywords separated by '|'.
         
         Format:
         KEYWORD1|KEYWORD2|KEYWORD3|KEYWORD4
-        
-        (Markdown Content starts from the second line)
         ...
-        
-        [Summary Keywords Definition]
-        1. Total Luck Summary (e.g. 기회 포착)
-        2. Boss/Colleague Strategy (e.g. 상사 눈치 조심)
-        3. Work Performance (e.g. 성과 달성)
-        4. Lucky Item (e.g. 따뜻한 라떼)
-        
-        [Detailed Briefing Structure]
-        - **⚡ 오늘의 총운**: Overall vibe.
-        - **🤝 상사/동료 전략**: Actionable advice.
-        - **📈 업무 및 성과**: Efficiency.
-        - **🛡️ 주의사항**: Risk management.
-        - **🍀 행운의 요소**: Color, Item.
         """
         
         try:
-            response = model.generate_content(strategy_prompt)
-            full_text = response.text.strip()
+            if DEBUG_MODE:
+                # [테스트 모드]
+                time.sleep(1.5)
+                full_text = """테스트 모드|API 미사용|무제한 테스트|디버깅 완료
+                
+                ### 🛠️ 개발자 테스트 모드 브리핑
+                현재 **DEBUG_MODE=True** 상태입니다.
+                
+                - **⚡ 오늘의 총운**: 이것은 테스트용 더미 텍스트입니다.
+                - **🤝 상사/동료 전략**: 디버그 모드에서는 모든 동료가 친절합니다.
+                - **📈 업무 및 성과**: 버그 없는 완벽한 하루가 예상됩니다.
+                - **🛡️ 주의사항**: 배포 시에는 .env에서 DEBUG_MODE를 끄세요.
+                - **🍀 행운의 요소**: 완벽한 코드, 따뜻한 커피.
+                """
+            else:
+                # [실제 모드]
+                response = model.generate_content(strategy_prompt)
+                full_text = response.text.strip()
             
             lines = full_text.split('\n')
             summary_line = None
@@ -296,8 +325,18 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
             display_card(r4, "🍀", "행운템", parts[3].strip())
             
             st.markdown("---")
-            
             st.markdown(detail_text)
             
         except Exception as e:
-            st.error(f"분석 실패: {e}")
+            # [RPD 선착순 마감 에러 처리]
+            error_msg = str(e)
+            st.markdown(f"""
+            <div class="quota-error">
+                <strong>📢 아쉽네요! 오늘의 선착순 분석이 마감되었습니다.</strong><br><br>
+                본 서비스는 하루 <strong>선착순 20명</strong>에게만 무료로 제공하고 있어요.<br>
+                내일 아침에 다시 도전해보세요! (매일 자정 초기화)
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.expander("개발자용 에러 상세 확인 (PO Only)"):
+                st.error(f"실제 에러 내용: {error_msg}")
