@@ -361,9 +361,10 @@ if st.button("🚀 전략 분석 시작", type="primary", use_container_width=Tr
             <div class="quota-error">
                 <strong>📢 아쉽네요! 오늘의 선착순 분석이 마감되었습니다.</strong><br><br>
                 본 서비스는 하루 <strong>선착순 20명</strong>에게만 무료로 제공하고 있어요.<br>
-                내일 아침에 다시 도전해보세요! (매일 자정 초기화)
+                내일 오후에 다시 도전해보세요! (매일 오후 4시 초기화)
             </div>
             """, unsafe_allow_html=True)
             
             with st.expander("개발자용 에러 상세 확인 (PO Only)"):
                 st.error(f"실제 에러 내용: {error_msg}")
+
