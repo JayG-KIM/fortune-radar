@@ -116,7 +116,6 @@ SYSTEM_PROMPT = """
 
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    # [수정 완료] PO님이 요청하신 2.5 Flash 모델로 변경
     model = genai.GenerativeModel(
         model_name='gemini-2.5-flash',
         system_instruction=SYSTEM_PROMPT
@@ -175,7 +174,7 @@ def get_lunar_date(date_obj):
 
 def get_zodiac_sign(day, month):
     """
-    황도 12궁 날짜 기준 (Fix 완료)
+    황도 12궁 날짜 기준
     """
     md = month * 100 + day
     
@@ -192,9 +191,34 @@ def get_zodiac_sign(day, month):
     elif 1123 <= md <= 1224: return "사수자리"
     else: return "염소자리"
 
-def get_korean_zodiac(year):
+# [NEW] 입춘 날짜 구하기 (PO님 제공 데이터 반영)
+def get_ipchun_date(year):
+    # 2월 3일인 해: 2021, 2025
+    if year in [2021, 2025]:
+        return datetime.date(year, 2, 3)
+    
+    # 2월 5일인 해: 1920~1984 중 윤년 (4로 나누어 떨어지는 해)
+    if 1920 <= year <= 1984 and (year % 4 == 0):
+        return datetime.date(year, 2, 5)
+    
+    # 그 외는 2월 4일
+    return datetime.date(year, 2, 4)
+
+# [FIX] 입춘 기준 띠 계산 로직
+def get_korean_zodiac(date_obj):
+    year = date_obj.year
+    
+    # 해당 연도의 입춘 날짜 구하기
+    ipchun = get_ipchun_date(year)
+    
+    # 생일이 입춘보다 전이면, '작년' 띠를 따라감
+    if date_obj < ipchun:
+        target_year = year - 1
+    else:
+        target_year = year
+        
     animals = ["원숭이", "닭", "개", "돼지", "쥐", "소", "호랑이", "토끼", "용", "뱀", "말", "양"]
-    return animals[year % 12]
+    return animals[target_year % 12]
 
 def display_card(column, icon, title, value):
     with column:
@@ -221,7 +245,7 @@ if DEBUG_MODE:
 
 c_input1, c_input2, c_input3 = st.columns([2, 1, 1])
 with c_input1:
-    # [수정 완료] 디폴트 2024-03-05, 최소 1920-01-01
+    # [수정] 디폴트 2024-03-05, 최소 1920-01-01
     birth_date = st.date_input("📅 생년월일", value=datetime.date(2024, 3, 5), min_value=datetime.date(1920, 1, 1))
 with c_input2:
     gender = st.radio("성별", ["남성", "여성"], horizontal=True)
@@ -231,7 +255,10 @@ with c_input3:
 
 lunar_date = get_lunar_date(birth_date)
 zodiac_name = get_zodiac_sign(birth_date.day, birth_date.month)
-animal_name = get_korean_zodiac(birth_date.year)
+
+# [FIX] 띠 계산 호출 시 날짜 객체 전체 전달
+animal_name = get_korean_zodiac(birth_date)
+
 weather_icon, weather_text = get_real_kma_weather()
 
 z_icon = ZODIAC_ICONS.get(zodiac_name, "⭐")
