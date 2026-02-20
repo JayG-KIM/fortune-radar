@@ -218,10 +218,12 @@ elif "상사" in mode: btn_label = "🤝 사회생활 공략법 분석"
 
 if st.button(btn_label, type="primary", use_container_width=True):
     st.session_state.lucky_item_revealed = False
+    st.session_state.lucky_item = None # 행운템 초기화
     with st.spinner("AI 분석 중..."):
         try:
             target_str = f"Target: {target_mbti}, {target_zodiac}, {target_animal}" if "나 혼자" not in mode else "Solo"
-            prompt = f"Date: {today}, Weather: {weather_text}. Mode: {mode}. User: {user_mbti}, {user_zodiac}, {user_animal}. {target_str}. Format: KEY1|KEY2|KEY3|KEY4 then detail."
+            # 행운템을 제외한 3가지 핵심 키워드만 요청 (KEY4 삭제)
+            prompt = f"Date: {today}, Weather: {weather_text}. Mode: {mode}. User: {user_mbti}, {user_zodiac}, {user_animal}. {target_str}. Format: KEY1|KEY2|KEY3 then detail."
             response = model.generate_content(prompt)
             full_text = response.text.strip()
             lines = full_text.split('\n')
@@ -237,12 +239,16 @@ if st.session_state.analysis_done:
     elif "상사" in mode: t1, t2, t3, t4 = "의전 운세", "보고 타이밍", "점심 추천", "대화 주제"
 
     r1, r2, r3, r4 = st.columns(4)
-    display_card(r1, "⚡", t1, s[0])
-    display_card(r2, "🎯", t2, s[1])
-    display_card(r3, "🔥", t3, s[2])
+    display_card(r1, "⚡", t1, s[0] if len(s) > 0 else "분석중")
+    display_card(r2, "🎯", t2, s[1] if len(s) > 1 else "분석중")
+    display_card(r3, "🔥", t3, s[2] if len(s) > 2 else "분석중")
+    
+    # 4번째 카드는 버튼 클릭 전까지 '미확인'으로 표시
     with r4:
-        if st.session_state.lucky_item_revealed: display_card(r4, "🍀", t4, s[3])
-        else: st.markdown(f'<div class="info-card"><div class="big-icon">🎁</div><div class="card-title">{t4}</div><div class="card-value">아래 버튼 클릭!</div></div>', unsafe_allow_html=True)
+        if st.session_state.lucky_item_revealed and 'lucky_item' in st.session_state:
+            display_card(r4, "🍀", t4, st.session_state.lucky_item)
+        else:
+            st.markdown(f'<div class="info-card"><div class="big-icon">🎁</div><div class="card-title">{t4}</div><div class="card-value">아래 버튼 클릭!</div></div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown(st.session_state.analysis_result["detail"])
@@ -254,14 +260,26 @@ if st.session_state.analysis_done:
         if not st.session_state.lucky_item_revealed:
             lottie_box = load_lottieurl("https://lottie.host/170b6d21-f09d-473d-9861-f0f90e5414d7/oV2uQjQ2tM.json")
             if lottie_box: st_lottie(lottie_box, height=150, key="box")
-        else: st.markdown("<h1 style='text-align: center;'>🍀</h1>", unsafe_allow_html=True)
+        else:
+            st.markdown("<h1 style='text-align: center; font-size: 80px;'>🍀</h1>", unsafe_allow_html=True)
+            
     with cb:
         if not st.session_state.lucky_item_revealed:
+            st.write(f"상단의 분석 내용과는 별개로, 오늘 당신에게 필요한 **'실물 행운 아이템'**을 AI가 새롭게 추천합니다.")
             if st.button("✨ 결과 확인하기", use_container_width=True):
-                st.session_state.lucky_item_revealed = True
-                st.balloons()
-                st.rerun()
+                # 구체적인 물건을 뽑아내기 위한 전용 프롬프트
+                lucky_prompt = f"사용자 정보({user_mbti}, {user_zodiac})와 오늘 날씨({weather_text})를 고려해서, 오늘 가방에 넣거나 먹으면 운이 좋아질 '구체적인 실물 물건' 하나만 추천해줘. (예: 노란 포스트잇, 초코에몽, 죽부인, 빨간 볼펜 등). 수식어 빼고 '물건 이름'만 딱 한 줄로 말해."
+                try:
+                    res = model.generate_content(lucky_prompt)
+                    st.session_state.lucky_item = res.text.strip()
+                    st.session_state.lucky_item_revealed = True
+                    st.balloons()
+                    st.rerun()
+                except:
+                    st.session_state.lucky_item = "따뜻한 아메리카노"
+                    st.session_state.lucky_item_revealed = True
+                    st.rerun()
         else:
-            st.info(f"오늘의 {t4}: **{s[3]}**")
-            share_txt = f"[오늘의 눈치 레이더]\n⚡ {t1}: {s[0]}\n🎯 {t2}: {s[1]}\n🔥 {t3}: {s[2]}\n🍀 {t4}: {s[3]}\n\n👉 https://nunchi-radar.streamlit.app"
+            st.info(f"오늘 당신을 지켜줄 {t4}: **{st.session_state.lucky_item}**")
+            share_txt = f"[오늘의 눈치 레이더]\n⚡ {t1}: {s[0]}\n🎯 {t2}: {s[1]}\n🍀 {t4}: {st.session_state.lucky_item}\n👉 https://nunchi-radar.streamlit.app"
             st.code(share_txt, language="text")
