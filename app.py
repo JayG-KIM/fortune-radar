@@ -47,7 +47,18 @@ try:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(
         model_name='gemini-2.5-flash',
-        system_instruction="당신은 'AI 처세술 전략 엔진'입니다. 전략은 짧은 키워드와 상세한 마크다운 설명으로 구분하여 제공합니다."
+        system_instruction="""당신은 '직장인 AI 처세술 전략 엔진'입니다.
+
+[톤 & 매너]
+- 출근길 지하철에서 킥킥거리며 볼 수 있는 가벼운 톤
+- 하지만 묘하게 그럴듯해서 "어? 이거 맞는데?" 하게 만드는 느낌
+- 구체적인 시간과 상황을 언급해서 현실감 있게
+- 직장인 공감 포인트를 자극하는 표현 사용
+
+[행운템 규칙]
+- 반드시 사무실/출퇴근길에서 볼 수 있는 구체적인 물건
+- 약간 웃기거나 의외의 아이템 (예: 3색 볼펜, 탕비실 종이컵, 모니터 포스트잇, 팀장님 머그컵 옆자리)
+- 음료/음식은 피하고, 물리적 오브젝트로"""
     )
 except Exception as e:
     st.error(f"System Error: {e}")
@@ -167,57 +178,102 @@ else:
 st.write("")
 st.markdown("---")
 
-# --- 5. 분석 로직 (프롬프트 핵심 수정) ---
+# --- 5. 분석 로직 (직장인 맞춤 프롬프트) ---
 btn_label = "🚀 전략 분석 시작"
 if "가족" in mode: btn_label = "💕 평화/사랑 전략 수립"
 elif "상사" in mode: btn_label = "🤝 사회생활 공략법 분석"
 
 if st.button(btn_label, type="primary", use_container_width=True):
-    with st.spinner("분석 중..."):
-        # 1. 행운템 다양성 보장 가이드
-        # 2. 첫 줄 키워드와 본문 분석 텍스트의 엄격한 분리 요청
-        lucky_guide = "Lucky Item (KEYWORD4) must be a quirky physical object like 'Bamboo wife(죽부인)', 'Vintage metronome', 'Red socks'. Avoid drinks."
-        prompt = f"""
-        [Output Format]
-        Line 1: KEYWORD1|KEYWORD2|KEYWORD3|KEYWORD4 (Exactly 4 short keywords)
-        Line 2+: Detailed markdown analysis (Bullets allowed)
+    with st.spinner("오늘의 기운을 분석 중... 🔮"):
         
-        [Data] Mode:{mode}, Weather:{weather_text}, User:{user_mbti}/{u_z}/{u_a}. {lucky_guide}
-        """
+        today = datetime.datetime.now()
+        weekday_kr = ["월", "화", "수", "목", "금", "토", "일"][today.weekday()]
+        
+        prompt = f"""
+[사용자 정보]
+- MBTI: {user_mbti}
+- 별자리: {u_z}
+- 띠: {u_a}띠
+- 오늘: {today.strftime('%Y년 %m월 %d일')} ({weekday_kr}요일)
+- 날씨: {weather_text}
+
+[출력 형식 - 반드시 이 형식을 지켜주세요]
+첫째줄: 한줄운세|오전팁|오후팁|행운템
+(각 항목은 15자 이내의 짧은 키워드/문장)
+
+둘째줄부터: 상세 분석 (마크다운)
+
+[상세 분석 필수 포함 항목]
+1. ⏰ **타임라인 전략** (시간대별 구체적 조언)
+   - 오전 (출근~점심): 이 시간에 하면 좋은 것/피할 것
+   - 점심시간: 누구와 먹을지, 어디서 먹을지 팁
+   - 오후 (점심 후~퇴근): 보고/회의/업무 타이밍
+   - 퇴근 후: 오늘 저녁 추천 활동
+
+2. ⚠️ **오늘의 주의보** (MBTI+띠+별자리 조합 기반)
+   - 피해야 할 상황이나 사람 유형
+   - 말실수 주의 포인트
+
+3. 🍀 **행운템 상세**
+   - 왜 이 아이템인지 운세적 해석
+   - 어디에 두면 좋은지
+
+[행운템 규칙]
+반드시 사무실/출퇴근길의 구체적 물건 중 하나:
+책상 위 문구류(3색볼펜, 포스트잇, 스테이플러), 회사 비품(종이컵, 명찰, 사원증 목걸이), 
+개인 소지품(손목시계, 안경닦이, 이어폰 케이스, 텀블러 뚜껑), 
+사무실 오브젝트(화분, 달력, 모니터 받침대, 의자 쿠션)
+→ 음료/음식 제외, 물리적 사물만
+
+[톤]
+- 친구가 카톡으로 알려주는 느낌
+- "~하세요" 보다 "~해", "~임", "~ㅋㅋ" 같은 편한 말투
+- 구체적인 상황 예시 포함 (예: "팀장님이 갑자기 부르면...")
+"""
+        
         try:
             response = model.generate_content(prompt).text.strip()
             lines = response.split('\n')
-            parts = lines[0].split('|')
+            
+            # 첫 줄 파싱 (키워드 4개)
+            first_line = lines[0].replace('*', '').strip()
+            parts = first_line.split('|')
+            
+            # 파싱 실패 시 기본값
+            if len(parts) < 4:
+                parts = ["순조로운 하루", "집중 모드", "여유 있게", "3색 볼펜"]
+            
             detail_text = "\n".join(lines[1:]).strip()
             
-            # 카드 출력 (요약만!)
-            st.success("✅ 전략 수립 완료")
-            t1, t2, t3, t4 = "총운", "관계", "미션", "행운템"
+            # 결과 카드 출력
+            st.success("✅ 오늘의 직장 생존 전략 완성!")
+            
+            t1, t2, t3, t4 = "오늘 한줄", "오전 키워드", "오후 키워드", "행운템"
             r1, r2, r3, r4 = st.columns(4)
-            display_card(r1, "⚡", t1, parts[0].strip())
-            display_card(r2, "🎯", t2, parts[1].strip())
-            display_card(r3, "🔥", t3, parts[2].strip())
+            display_card(r1, "🔮", t1, parts[0].strip())
+            display_card(r2, "🌅", t2, parts[1].strip())
+            display_card(r3, "🌆", t3, parts[2].strip())
             display_card(r4, "🍀", t4, parts[3].strip())
             
-            # 상세 분석 출력 (카드 밖 하단!)
+            # 상세 분석 출력
             st.markdown("---")
+            st.markdown("### 📋 상세 전략 리포트")
             st.markdown(detail_text)
             
-            # [공유하기 기능 부활]
+            # 공유하기 기능
             st.markdown("---")
             st.subheader("📋 친구에게 공유하기")
-            share_text = f"""[오늘의 눈치 레이더]
-⚡ {t1}: {parts[0].strip()}
-🎯 {t2}: {parts[1].strip()}
-🔥 {t3}: {parts[2].strip()}
-🍀 {t4}: {parts[3].strip()}
-👉 전략 확인하기: https://nunchi-radar.streamlit.app"""
+            share_text = f"""[오늘의 눈치 레이더] {today.strftime('%m/%d')} ({weekday_kr})
+
+🔮 한줄운세: {parts[0].strip()}
+🌅 오전: {parts[1].strip()}
+🌆 오후: {parts[2].strip()}
+🍀 행운템: {parts[3].strip()}
+
+👉 나도 해보기: https://nunchi-radar.streamlit.app"""
 
             st.code(share_text, language="text")
             st.caption("👆 위 박스 오른쪽의 '복사(Copy)' 아이콘을 누르면 결과가 복사됩니다!")
 
         except Exception as e:
-            st.error("분석 실패. 다시 시도해 주세요.")
-
-
-
+            st.error(f"분석 실패. 다시 시도해 주세요. (Error: {e})")
