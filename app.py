@@ -276,4 +276,33 @@ if st.button(btn_label, type="primary", use_container_width=True):
             st.caption("👆 위 박스 오른쪽의 '복사(Copy)' 아이콘을 누르면 결과가 복사됩니다!")
 
         except Exception as e:
-            st.error(f"분석 실패. 다시 시도해 주세요. (Error: {e})")
+            error_msg = str(e)
+            
+            # 429 에러 (일일 할당량 초과) 처리
+            if "429" in error_msg or "quota" in error_msg.lower() or "exceeded" in error_msg.lower():
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
+                            border-radius: 16px; padding: 30px; margin: 20px 0; text-align: center;
+                            border: 2px solid #FFD93D;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">🔮✨</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #FFD93D; margin-bottom: 10px;">
+                        오늘의 운세 기운이 소진되었습니다!
+                    </div>
+                    <div style="font-size: 14px; color: #AAAAAA; margin-bottom: 20px; line-height: 1.8;">
+                        하루 <span style="color: #00D4FF; font-weight: bold;">선착순 20명</span>에게만 제공되는 프리미엄 운세입니다.<br>
+                        오늘의 행운아 20명이 이미 운세를 확인했어요! 🎉
+                    </div>
+                    <div style="background-color: #2d2d44; border-radius: 12px; padding: 15px; margin: 15px 0;">
+                        <div style="font-size: 12px; color: #888888; margin-bottom: 5px;">⏰ 운세 리젠 시간</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #00D4FF;">매일 오후 4:00</div>
+                    </div>
+                    <div style="font-size: 13px; color: #888888; margin-top: 15px;">
+                        💡 팁: 내일은 출근길에 일찍 확인해보세요!
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.info("🕓 오후 4시 이후에 다시 방문하시면 새로운 운세를 확인할 수 있어요!")
+            else:
+                # 기타 에러
+                st.error(f"분석 실패. 다시 시도해 주세요. (Error: {e})")
