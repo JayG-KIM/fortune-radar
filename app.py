@@ -121,7 +121,7 @@ SYSTEM_PROMPT = """
 try:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(
-        model_name='gemini-2.0-flash', # 모델명은 현재 가용 버전에 맞게 수정 가능
+        model_name='gemini-2.5-flash', # 모델명은 현재 가용 버전에 맞게 수정 가능
         system_instruction=SYSTEM_PROMPT
     )
 except Exception as e:
@@ -369,3 +369,4 @@ if st.session_state.analysis_done:
     share_text = f"[오늘의 눈치 레이더]\n\n⚡ {s[0]}\n🎯 {s[1]}\n🔥 {s[2]}\n🍀 행운템: {st.session_state.lucky_item or '뽑기 대기 중'}\n\n👉 확인하기: https://nunchi-radar.streamlit.app"
     st.code(share_text, language="text")
     st.caption("복사해서 동료나 가족에게 공유해 보세요!")
+
