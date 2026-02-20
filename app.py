@@ -203,21 +203,21 @@ if st.button(btn_label, type="primary", use_container_width=True):
             st.markdown("---")
             st.markdown(detail_text)
             
-# [공유하기 기능 부활]
+            # [공유하기 기능 부활]
+            st.markdown("---")
+            st.subheader("📋 친구에게 공유하기")
+            share_text = f"""[오늘의 눈치 레이더]
+            ⚡ {t1}: {parts[0].strip()}
+            🎯 {t2}: {parts[1].strip()}
+            🔥 {t3}: {parts[2].strip()}
+            🍀 {t4}: {parts[3].strip()}
 
-st.markdown("---")
-st.subheader("📋 친구에게 공유하기")
-share_text = f"""[오늘의 눈치 레이더]
-⚡ {t1}: {parts[0].strip()}
-🎯 {t2}: {parts[1].strip()}
-🔥 {t3}: {parts[2].strip()}
-🍀 {t4}: {parts[3].strip()}
+            👉 전략 확인하기: https://nunchi-radar.streamlit.app"""
 
-👉 전략 확인하기: https://nunchi-radar.streamlit.app"""
-
-st.code(share_text, language="text")
-st.caption("👆 위 박스 오른쪽의 '복사(Copy)' 아이콘을 누르면 결과가 복사됩니다!")
+            st.code(share_text, language="text")
+            st.caption("👆 위 박스 오른쪽의 '복사(Copy)' 아이콘을 누르면 결과가 복사됩니다!")
 
         except Exception as e:
             st.error("분석 실패. 다시 시도해 주세요.")
+
 
