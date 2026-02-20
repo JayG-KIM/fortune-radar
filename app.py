@@ -8,7 +8,6 @@ import os
 import time
 from dotenv import load_dotenv
 from korean_lunar_calendar import KoreanLunarCalendar
-from streamlit_lottie import st_lottie
 
 # --- 1. 환경 변수 및 설정 로드 ---
 load_dotenv()
@@ -19,6 +18,8 @@ if not os.getenv("GEMINI_API_KEY"):
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+
+# 디버그 모드 확인 (환경변수가 'True'일 때만 작동)
 DEBUG_MODE = os.getenv("DEBUG_MODE", "False") == "True"
 
 st.set_page_config(
@@ -27,34 +28,102 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. AI 모델 설정 (Gemini 2.5 Flash) ---
+# CSS: 모던하고 전략적인 디자인
+st.markdown("""
+<style>
+    .info-card {
+        background-color: #1E1E1E;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        border: 1px solid #333;
+        margin-bottom: 10px;
+        height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .big-icon { font-size: 32px; margin-bottom: 8px; }
+    .card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #A0A0A0;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .card-value {
+        font-size: 16px;
+        color: #FFFFFF;
+        font-weight: 500;
+        word-break: keep-all;
+    }
+    .title-container {
+        text-align: left;
+        margin-bottom: 20px;
+    }
+    .main-title { 
+        font-size: 32px; 
+        font-weight: bold; 
+        color: #FFFFFF; 
+        margin-bottom: 5px;
+        line-height: 1.2;
+    }
+    .sub-title { 
+        font-size: 16px; 
+        color: #CCCCCC; 
+        margin-bottom: 10px; 
+        line-height: 1.5;
+    }
+    .highlight {
+        color: #00D4FF;
+        font-weight: bold;
+    }
+    .engine-tag { 
+        display: inline-block;
+        font-size: 11px; 
+        color: #00D4FF; 
+        border: 1px solid #00D4FF; 
+        padding: 4px 10px; 
+        border-radius: 15px; 
+        background-color: rgba(0, 212, 255, 0.05);
+    }
+    /* 선착순 마감 에러 메시지 스타일 */
+    .quota-error {
+        background-color: #2b1c1c;
+        border: 1px solid #ff4b4b;
+        color: #ffcccc;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        font-size: 15px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 2. AI 모델 설정 ---
+SYSTEM_PROMPT = """
+당신은 '직장인 처세술 전략 엔진(AI Work Strategy Engine)'입니다.
+미신적인 점집이 아니라, 사용자의 기질과 환경 변수(날씨, 시간)를 분석하여
+가장 현실적이고 전략적인 직장 생활 가이드를 제공합니다.
+
+[Tone & Manner]
+1. 정중하지만 통찰력 있는 '전문 컨설턴트'의 어조를 유지하세요.
+2. 반말이나 '김대리' 같은 특정 호칭은 절대 사용하지 마세요.
+3. 추상적인 조언보다는 "오후 2시에 보고하세요", "따뜻한 국물을 드세요" 같이 구체적인 행동을 지시하세요.
+"""
+
 try:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(
         model_name='gemini-2.5-flash',
-        system_instruction="당신은 'AI 처세술 전략 엔진'입니다. 사용자와 상대방의 기질, 환경(날씨)을 분석하여 구체적인 행동 전략을 제시합니다."
+        system_instruction=SYSTEM_PROMPT
     )
 except Exception as e:
     st.error(f"System Error: {e}")
 
-# --- 3. CSS 스타일 정의 ---
-st.markdown("""
-<style>
-.info-card { background-color: #1E1E1E; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #333; margin-bottom: 5px; height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.big-icon { font-size: 24px; margin-bottom: 5px; }
-.card-title { font-size: 12px; font-weight: 600; color: #A0A0A0; margin-bottom: 2px; text-transform: uppercase; }
-.card-value { font-size: 14px; color: #FFFFFF; font-weight: 500; word-break: keep-all; }
-.title-container { text-align: left; margin-bottom: 10px; }
-.main-title { font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px; line-height: 1.2; }
-.sub-title { font-size: 14px; color: #CCCCCC; margin-bottom: 5px; line-height: 1.5; }
-.highlight { color: #00D4FF; font-weight: bold; }
-.weather-badge { background-color: #333; color: #fff; padding: 5px 10px; border-radius: 15px; font-size: 12px; margin-left: 10px; vertical-align: middle; }
-.engine-tag { display: inline-block; font-size: 11px; color: #00D4FF; border: 1px solid #00D4FF; padding: 4px 10px; border-radius: 15px; background-color: rgba(0, 212, 255, 0.05); margin-top: 5px; }
-.quota-error { background-color: #2b1c1c; border: 1px solid #ff4b4b; color: #ffcccc; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 15px; line-height: 1.6; }
-</style>
-""", unsafe_allow_html=True)
-
-# --- 4. 데이터 매핑 및 함수 (원본 로직 복구) ---
+# --- 3. 데이터 매핑 및 함수 ---
 ZODIAC_ICONS = {
     "염소자리": "🐐", "물병자리": "🏺", "물고기자리": "🐟", "양자리": "🐏",
     "황소자리": "🐂", "쌍둥이자리": "👯", "게자리": "🦀", "사자자리": "🦁",
@@ -73,20 +142,30 @@ def get_real_kma_weather():
     base_time_obj = now - datetime.timedelta(minutes=40)
     base_date = base_time_obj.strftime("%Y%m%d")
     base_time = base_time_obj.strftime("%H00")
-    url = f"http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst?serviceKey={WEATHER_API_KEY}&pageNo=1&numOfRows=1000&dataType=JSON&base_date={base_date}&base_time={base_time}&nx={nx}&ny={ny}"
+    
+    url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst"
+    params = {
+        "serviceKey": WEATHER_API_KEY, "pageNo": "1", "numOfRows": "1000", 
+        "dataType": "JSON", "base_date": base_date, "base_time": base_time, 
+        "nx": nx, "ny": ny
+    }
     try:
-        response = requests.get(url, timeout=3)
+        response = requests.get(url, params=params, timeout=3)
         data = response.json()
         items = data['response']['body']['items']['item']
         weather_data = {item['category']: item['obsrValue'] for item in items}
+        
         pty = int(weather_data.get('PTY', 0))
         temp = weather_data.get('T1H', '?')
         icon, status = "☀️", "맑음"
+        
         if pty in [1, 5]: icon, status = "☔", "비"
         elif pty in [2, 6]: icon, status = "🌨️", "비/눈"
         elif pty in [3, 7]: icon, status = "☃️", "눈"
-        return icon, f"{status} {temp}℃"
-    except: return "📡", "수신불가"
+        
+        return icon, f"{status} ({temp}℃)"
+    except:
+        return "📡", "수신불가"
 
 def get_lunar_date(date_obj):
     calendar = KoreanLunarCalendar()
@@ -108,178 +187,157 @@ def get_zodiac_sign(day, month):
     elif 1123 <= md <= 1224: return "사수자리"
     else: return "염소자리"
 
-def get_ipchun_date(year):
-    # 사용자가 작성한 입춘 로직 복구
-    if year in [2021, 2025]: return datetime.date(year, 2, 3)
-    if 1920 <= year <= 1984 and (year % 4 == 0): return datetime.date(year, 2, 5)
-    return datetime.date(year, 2, 4)
-
-def get_korean_zodiac(date_obj):
-    year = date_obj.year
-    ipchun = get_ipchun_date(year)
-    target_year = year if date_obj >= ipchun else year - 1
+def get_korean_zodiac(year):
     animals = ["원숭이", "닭", "개", "돼지", "쥐", "소", "호랑이", "토끼", "용", "뱀", "말", "양"]
-    return animals[target_year % 12]
+    return animals[year % 12]
 
 def display_card(column, icon, title, value):
     with column:
-        st.markdown(f'<div class="info-card"><div class="big-icon">{icon}</div><div class="card-title">{title}</div><div class="card-value">{value}</div></div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="info-card">
+            <div class="big-icon">{icon}</div>
+            <div class="card-title">{title}</div>
+            <div class="card-value">{value}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-def load_lottieurl(url: str):
-    try:
-        r = requests.get(url)
-        return r.json() if r.status_code == 200 else None
-    except: return None
+# --- 4. 메인 UI ---
+st.markdown("""
+    <div class="title-container">
+        <div class="main-title">오늘의 눈치 레이더</div>
+        <div class="sub-title">데이터로 분석한 <span class="highlight">오늘의 직장 생존 전략</span></div>
+        <div class="engine-tag">Powered by AI Work Strategy Engine</div>
+    </div>
+    <hr style="border-top: 1px solid #333; margin-top: 10px;">
+""", unsafe_allow_html=True)
 
-# --- 5. 세션 상태 관리 ---
-if 'analysis_done' not in st.session_state: st.session_state.analysis_done = False
-if 'lucky_item_revealed' not in st.session_state: st.session_state.lucky_item_revealed = False
-if 'analysis_result' not in st.session_state: st.session_state.analysis_result = {}
+if DEBUG_MODE:
+    st.caption("🛠️ 현재 [개발자 테스트 모드]가 켜져 있습니다. API가 차감되지 않습니다.")
 
-# --- 6. 사이드바 및 레이아웃 ---
-with st.sidebar:
-    st.header("😎 모드 선택")
-    mode = st.radio("전략 모드", ["💼 나 혼자 (직장 생존)", "🏠 가족/애인 (평화 유지)", "🤝 상사/동료 (사회생활)"], index=0)
-    st.markdown("---")
-    st.caption("Ver 2.5.0 (Original Logic Restored)")
+c_input1, c_input2, c_input3 = st.columns([2, 1, 1])
+with c_input1:
+    birth_date = st.date_input("📅 생년월일", value=datetime.date(2024, 3, 5), min_value=datetime.date(1920, 1, 1))
+with c_input2:
+    gender = st.radio("성별", ["남성", "여성"], horizontal=True)
+with c_input3:
+    mbti_list = ["ISTJ", "ISFJ", "INFJ", "INTJ", "ISTP", "ISFP", "INFP", "INTP", "ESTP", "ESFP", "ENFP", "ENTP", "ESTJ", "ESFJ", "ENFJ", "ENTJ"]
+    my_mbti = st.selectbox("MBTI (필수)", mbti_list)
 
+lunar_date = get_lunar_date(birth_date)
+zodiac_name = get_zodiac_sign(birth_date.day, birth_date.month)
+animal_name = get_korean_zodiac(birth_date.year)
 weather_icon, weather_text = get_real_kma_weather()
 
-# 제목 및 서브타이틀
-weather_html = f"<span class='weather-badge'>{weather_icon} 마곡 {weather_text}</span>"
-if "나 혼자" in mode:
-    subtitle_text = "데이터로 분석한 <span class='highlight'>오늘의 직장 생존 전략</span>"
-    weather_html = "" # 나혼자 모드일 땐 원본처럼 뱃지 숨김 (카드에는 표시)
-elif "가족" in mode:
-    subtitle_text = "평화로운 관계를 위한 <span class='highlight'>로맨스/가족 전략</span>"
-else:
-    subtitle_text = "성공적인 사회생활을 위한 <span class='highlight'>관계 공략법</span>"
+z_icon = ZODIAC_ICONS.get(zodiac_name, "⭐")
+a_icon = ANIMAL_ICONS.get(animal_name, "🐾")
 
-st.markdown(f'<div class="title-container"><span class="main-title">오늘의 눈치 레이더</span>{weather_html if "나 혼자" not in mode else ""}<div class="sub-title">{subtitle_text}</div><div class="engine-tag">Powered by AI Work Strategy Engine</div></div><hr style="border-top: 1px solid #333; margin-top: 5px; margin-bottom: 15px;">', unsafe_allow_html=True)
-
-# --- 7. 입력 폼 (날짜 범위 1920~2026 복구) ---
-mbti_list = ["ISTJ", "ISFJ", "INFJ", "INTJ", "ISTP", "ISFP", "INFP", "INTP", "ESTP", "ESFP", "ENFP", "ENTP", "ESTJ", "ESFJ", "ENFJ", "ENTJ"]
-today = datetime.date(2026, 2, 20)
-
-if "나 혼자" in mode:
-    st.subheader("👤 내 정보")
-    c1, c2, c3 = st.columns([2, 1, 1])
-    with c1: user_birth = st.date_input("내 생년월일", value=datetime.date(1990, 1, 1), min_value=datetime.date(1920, 1, 1), max_value=today)
-    with c2: user_gender = st.radio("내 성별", ["남성", "여성"], horizontal=True)
-    with c3: user_mbti = st.selectbox("내 MBTI", mbti_list)
-    
-    user_lunar = get_lunar_date(user_birth)
-    user_zodiac = get_zodiac_sign(user_birth.day, user_birth.month)
-    user_animal = get_korean_zodiac(user_birth)
-    
-    c1, c2, c3, c4 = st.columns(4)
-    display_card(c1, ZODIAC_ICONS.get(user_zodiac, "⭐"), "내 별자리", user_zodiac)
-    display_card(c2, ANIMAL_ICONS.get(user_animal, "🐾"), "내 띠", f"{user_animal}띠")
-    display_card(c3, "🌕", "음력 생일", user_lunar)
-    display_card(c4, weather_icon, "마곡 날씨", weather_text)
-else:
-    col_left, col_right = st.columns(2)
-    with col_left:
-        st.subheader("👤 나 (User)")
-        user_birth = st.date_input("내 생년월일", value=datetime.date(1990, 1, 1), min_value=datetime.date(1920, 1, 1), max_value=today, key="u_b")
-        r1, r2 = st.columns(2)
-        with r1: user_gender = st.radio("내 성별", ["남성", "여성"], key="u_g")
-        with r2: user_mbti = st.selectbox("내 MBTI", mbti_list, key="u_m")
-    with col_right:
-        label = "🏠 가족/애인" if "가족" in mode else "🤝 상사/동료"
-        st.subheader(f"{label} (Target)")
-        target_birth = st.date_input("상대 생년월일", value=datetime.date(1990, 1, 1), min_value=datetime.date(1920, 1, 1), max_value=today, key="t_b")
-        r1, r2 = st.columns(2)
-        with r1: target_gender = st.radio("상대 성별", ["남성", "여성"], key="t_g")
-        with r2: target_mbti = st.selectbox("상대 MBTI", ["모름/선택안함"] + mbti_list, key="t_m")
-
-    user_lunar, user_zodiac, user_animal = get_lunar_date(user_birth), get_zodiac_sign(user_birth.day, user_birth.month), get_korean_zodiac(user_birth)
-    target_lunar, target_zodiac, target_animal = get_lunar_date(target_birth), get_zodiac_sign(target_birth.day, target_birth.month), get_korean_zodiac(target_birth)
-
-    cl, cr = st.columns(2)
-    with cl:
-        sc1, sc2, sc3 = st.columns(3)
-        display_card(sc1, ZODIAC_ICONS.get(user_zodiac, "⭐"), "별자리", user_zodiac)
-        display_card(sc2, ANIMAL_ICONS.get(user_animal, "🐾"), "띠", f"{user_animal}띠")
-        display_card(sc3, "🌕", "음력", user_lunar)
-    with cr:
-        sc1, sc2, sc3 = st.columns(3)
-        display_card(sc1, ZODIAC_ICONS.get(target_zodiac, "⭐"), "별자리", target_zodiac)
-        display_card(sc2, ANIMAL_ICONS.get(target_animal, "🐾"), "띠", f"{target_animal}띠")
-        display_card(sc3, "🌕", "음력", target_lunar)
+c1, c2, c3, c4 = st.columns(4)
+display_card(c1, z_icon, "별자리", zodiac_name)
+display_card(c2, a_icon, "띠", f"{animal_name}띠")
+display_card(c3, "🌕", "음력 생일", lunar_date)
+display_card(c4, weather_icon, "마곡 날씨", weather_text)
 
 st.write("")
 st.markdown("---")
 
-# --- 8. 분석 로직 ---
-btn_label = "🚀 전략 분석 시작"
-if "가족" in mode: btn_label = "💕 평화/사랑 전략 수립"
-elif "상사" in mode: btn_label = "🤝 사회생활 공략법 분석"
+# --- 5. 전략 분석 로직 ---
+if st.button("🚀 전략 분석 시작", type="primary", use_container_width=True):
+    
+    loading_texts = [
+        "📡 사무실의 공기를 읽는 중...",
+        "📉 보이지 않는 역학 관계 계산 중...",
+        "☁️ 마곡동 기상 변수 대입 중...",
+        "🧠 최적의 보고 타이밍 계산 중..."
+    ]
+    
+    with st.spinner(random.choice(loading_texts)):
+        
+        # [수정] 행운템 다양성과 의외성을 위한 프롬프트 가이드 보강
+        strategy_prompt = f"""
+        Analyze today's workplace strategy for the user.
+        
+        [Input Data]
+        - Date: {datetime.date.today()}
+        - Weather: {weather_text} (Affects mood/commute)
+        - User: {animal_name} (Zodiac), {zodiac_name} (StarSign), {my_mbti} (MBTI)
+        
+        [Output Request]
+        Generate a strategic briefing in Korean.
+        IMPORTANT: The very first line MUST be the 4 summary keywords separated by '|'.
+        
+        [Guidelines for KEYWORD4 - Lucky Item (행운템)]
+        1. Avoid repetitive or common items like 'warm coffee', 'herb tea', or 'hot water'.
+        2. Provide a variety of specific items across different categories:
+           - Tech: Noise-canceling headphones, a specific color of mouse, etc.
+           - Office: High-quality fountain pen, a specific book title, vintage stapler, etc.
+           - Comfort: Hand warmer, ergonomic cushion, blue light glasses, etc.
+           - Unexpected/Quirky: Bamboo wife (죽부인), a specific color of socks, a nostalgic toy, a single rose, etc.
+        3. Make the item feel personal and surprising, not just weather-dependent.
 
-if st.button(btn_label, type="primary", use_container_width=True):
-    st.session_state.lucky_item_revealed = False
-    st.session_state.lucky_item = None # 행운템 초기화
-    with st.spinner("AI 분석 중..."):
+        Format:
+        KEYWORD1|KEYWORD2|KEYWORD3|KEYWORD4
+        ...
+        """
+        
         try:
-            target_str = f"Target: {target_mbti}, {target_zodiac}, {target_animal}" if "나 혼자" not in mode else "Solo"
-            # 행운템을 제외한 3가지 핵심 키워드만 요청 (KEY4 삭제)
-            prompt = f"Date: {today}, Weather: {weather_text}. Mode: {mode}. User: {user_mbti}, {user_zodiac}, {user_animal}. {target_str}. Format: KEY1|KEY2|KEY3 then detail."
-            response = model.generate_content(prompt)
-            full_text = response.text.strip()
-            lines = full_text.split('\n')
-            st.session_state.analysis_result = {"summary": lines[0].split('|'), "detail": "\n".join(lines[1:])}
-            st.session_state.analysis_done = True
-        except Exception as e: st.error(f"분석 실패: {e}")
-
-# --- 9. 결과 및 행운템 뽑기 ---
-if st.session_state.analysis_done:
-    s = st.session_state.analysis_result["summary"]
-    t1, t2, t3, t4 = "오늘의 총운", "관계 전략", "핵심 미션", "행운템"
-    if "가족" in mode: t1, t2, t3, t4 = "애정/가정운", "상대 공략", "추천 활동", "치트키"
-    elif "상사" in mode: t1, t2, t3, t4 = "의전 운세", "보고 타이밍", "점심 추천", "대화 주제"
-
-    r1, r2, r3, r4 = st.columns(4)
-    display_card(r1, "⚡", t1, s[0] if len(s) > 0 else "분석중")
-    display_card(r2, "🎯", t2, s[1] if len(s) > 1 else "분석중")
-    display_card(r3, "🔥", t3, s[2] if len(s) > 2 else "분석중")
-    
-    # 4번째 카드는 버튼 클릭 전까지 '미확인'으로 표시
-    with r4:
-        if st.session_state.lucky_item_revealed and 'lucky_item' in st.session_state:
-            display_card(r4, "🍀", t4, st.session_state.lucky_item)
-        else:
-            st.markdown(f'<div class="info-card"><div class="big-icon">🎁</div><div class="card-title">{t4}</div><div class="card-value">아래 버튼 클릭!</div></div>', unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown(st.session_state.analysis_result["detail"])
-    
-    st.markdown("---")
-    st.subheader(f"🎁 오늘의 {t4} 뽑기")
-    ca, cb = st.columns([1, 2])
-    with ca:
-        if not st.session_state.lucky_item_revealed:
-            lottie_box = load_lottieurl("https://lottie.host/170b6d21-f09d-473d-9861-f0f90e5414d7/oV2uQjQ2tM.json")
-            if lottie_box: st_lottie(lottie_box, height=150, key="box")
-        else:
-            st.markdown("<h1 style='text-align: center; font-size: 80px;'>🍀</h1>", unsafe_allow_html=True)
+            if DEBUG_MODE:
+                time.sleep(1.5)
+                full_text = """테스트 모드|API 미사용|무제한 테스트|죽부인
+                
+                ### 🛠️ 개발자 테스트 모드 브리핑
+                현재 **DEBUG_MODE=True** 상태입니다.
+                
+                - **⚡ 오늘의 총운**: 이것은 테스트용 더미 텍스트입니다.
+                - **🤝 상사/동료 전략**: 디버그 모드에서는 모든 동료가 친절합니다.
+                - **📈 업무 및 성과**: 버그 없는 완벽한 하루가 예상됩니다.
+                - **🛡️ 주의사항**: 배포 시에는 .env에서 DEBUG_MODE를 끄세요.
+                - **🍀 행운의 요소**: 의외의 즐거움을 주는 **죽부인**을 곁에 두세요.
+                """
+            else:
+                response = model.generate_content(strategy_prompt)
+                full_text = response.text.strip()
             
-    with cb:
-        if not st.session_state.lucky_item_revealed:
-            st.write(f"상단의 분석 내용과는 별개로, 오늘 당신에게 필요한 **'실물 행운 아이템'**을 AI가 새롭게 추천합니다.")
-            if st.button("✨ 결과 확인하기", use_container_width=True):
-                # 구체적인 물건을 뽑아내기 위한 전용 프롬프트
-                lucky_prompt = f"사용자 정보({user_mbti}, {user_zodiac})와 오늘 날씨({weather_text})를 고려해서, 오늘 가방에 넣거나 먹으면 운이 좋아질 '구체적인 실물 물건' 하나만 추천해줘. (예: 노란 포스트잇, 초코에몽, 죽부인, 빨간 볼펜 등). 수식어 빼고 '물건 이름'만 딱 한 줄로 말해."
-                try:
-                    res = model.generate_content(lucky_prompt)
-                    st.session_state.lucky_item = res.text.strip()
-                    st.session_state.lucky_item_revealed = True
-                    st.balloons()
-                    st.rerun()
-                except:
-                    st.session_state.lucky_item = "따뜻한 아메리카노"
-                    st.session_state.lucky_item_revealed = True
-                    st.rerun()
-        else:
-            st.info(f"오늘 당신을 지켜줄 {t4}: **{st.session_state.lucky_item}**")
-            share_txt = f"[오늘의 눈치 레이더]\n⚡ {t1}: {s[0]}\n🎯 {t2}: {s[1]}\n🍀 {t4}: {st.session_state.lucky_item}\n👉 https://nunchi-radar.streamlit.app"
-            st.code(share_txt, language="text")
+            lines = full_text.split('\n')
+            summary_line = None
+            detail_lines = []
+            
+            found_summary = False
+            for i, line in enumerate(lines):
+                if "|" in line and not found_summary:
+                    summary_line = line
+                    found_summary = True
+                else:
+                    detail_lines.append(line)
+            
+            detail_text = "\n".join(detail_lines).strip()
+
+            if summary_line:
+                parts = summary_line.split('|')
+            else:
+                parts = ["분석 완료", "전략 수립", "기회 포착", "행운 가득"]
+
+            while len(parts) < 4: parts.append("-")
+
+            st.success("✅ 전략 브리핑이 생성되었습니다.")
+            
+            r1, r2, r3, r4 = st.columns(4)
+            display_card(r1, "⚡", "오늘의 총운", parts[0].strip())
+            display_card(r2, "🤝", "상사/동료", parts[1].strip())
+            display_card(r3, "📈", "업무/성과", parts[2].strip())
+            display_card(r4, "🍀", "행운템", parts[3].strip())
+            
+            st.markdown("---")
+            st.markdown(detail_text)
+            
+        except Exception as e:
+            error_msg = str(e)
+            st.markdown(f"""
+            <div class="quota-error">
+                <strong>📢 아쉽네요! 오늘의 선착순 분석이 마감되었습니다.</strong><br><br>
+                본 서비스는 하루 <strong>선착순 20명</strong>에게만 무료로 제공하고 있어요.<br>
+                내일 아침에 다시 도전해보세요! (매일 자정 초기화)
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.expander("개발자용 에러 상세 확인 (PO Only)"):
+                st.error(f"실제 에러 내용: {error_msg}")
