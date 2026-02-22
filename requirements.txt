@@ -1,0 +1,6 @@
+streamlit
+google-generativeai
+python-dotenv
+korean_lunar_calendar
+requests
+streamlit-lottie

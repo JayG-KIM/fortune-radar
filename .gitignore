@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+*.zip
+ai 운세 구글 api키*
+.DS_Store
