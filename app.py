@@ -50,11 +50,11 @@ st.markdown("""
 
 # --- 2. 업무지구 설정 ---
 BUSINESS_DISTRICTS = {
-    "CBD (종로/을지로)": {"nx": 60, "ny": 127, "name": "종로"},
-    "YBD (여의도)": {"nx": 58, "ny": 126, "name": "여의도"},
-    "GBD (강남/테헤란로)": {"nx": 61, "ny": 126, "name": "강남"},
-    "BBD (판교)": {"nx": 62, "ny": 123, "name": "판교"},
-    "MBD (마곡)": {"nx": 58, "ny": 125, "name": "마곡"},
+    "종로/을지로": {"nx": 60, "ny": 127, "name": "종로"},
+    "여의도": {"nx": 58, "ny": 126, "name": "여의도"},
+    "강남/테헤란로": {"nx": 61, "ny": 126, "name": "강남"},
+    "판교": {"nx": 62, "ny": 123, "name": "판교"},
+    "마곡": {"nx": 58, "ny": 125, "name": "마곡"},
 }
 
 # --- 3. 아이콘 데이터 ---
@@ -755,30 +755,14 @@ def generate_fortune(mbti, zodiac, animal, birth_date, weather_condition, today)
     }
 
 # --- 6. 메인 UI ---
-with st.sidebar:
-    st.header("📍 내 업무지구")
-    selected_district = st.selectbox(
-        "출근하는 곳",
-        list(BUSINESS_DISTRICTS.keys()),
-        index=4,
-        help="날씨 정보를 가져올 업무지구를 선택하세요"
-    )
-
-district_info = BUSINESS_DISTRICTS[selected_district]
-weather_icon, weather_text, weather_condition = get_weather(
-    district_info["nx"], 
-    district_info["ny"], 
-    district_info["name"]
-)
-
 subtitle_text = "데이터로 분석한 <span class='highlight'>오늘의 직장 생존 전략</span>"
-weather_html = f"<span class='weather-badge'>{weather_icon} {district_info['name']} {weather_text}</span>"
 
-st.markdown(f'<div class="title-container"><span class="main-title">오늘의 눈치 레이더</span>{weather_html}<div class="sub-title">{subtitle_text}</div><div class="engine-tag">Powered by Fortune Template Engine v3</div></div><hr style="border-top: 1px solid #333; margin-top: 5px; margin-bottom: 15px;">', unsafe_allow_html=True)
+# 타이틀 (날씨는 지역 선택 후 업데이트)
+st.markdown(f'<div class="title-container"><span class="main-title">오늘의 눈치 레이더</span><div class="sub-title">{subtitle_text}</div><div class="engine-tag">Powered by Fortune Template Engine v2.0.0</div></div><hr style="border-top: 1px solid #333; margin-top: 5px; margin-bottom: 15px;">', unsafe_allow_html=True)
 
 # 사용자 정보 입력
 st.subheader("👤 내 정보")
-c1, c2, c3 = st.columns([2, 1, 1])
+c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
 mbti_list = ["ISTJ", "ISFJ", "INFJ", "INTJ", "ISTP", "ISFP", "INFP", "INTP", "ESTP", "ESFP", "ENFP", "ENTP", "ESTJ", "ESFJ", "ENFJ", "ENTJ"]
 
 with c1: 
@@ -787,6 +771,15 @@ with c2:
     user_gender = st.radio("내 성별", ["남성", "여성"], horizontal=True)
 with c3: 
     user_mbti = st.selectbox("내 MBTI", mbti_list)
+with c4:
+    selected_district = st.selectbox("내 출근지역", list(BUSINESS_DISTRICTS.keys()), index=4)
+
+district_info = BUSINESS_DISTRICTS[selected_district]
+weather_icon, weather_text, weather_condition = get_weather(
+    district_info["nx"], 
+    district_info["ny"], 
+    district_info["name"]
+)
 
 # 카드 데이터 계산
 u_l = get_lunar_date(user_birth)
